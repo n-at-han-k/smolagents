@@ -28,6 +28,7 @@ require_relative "smolagents/model_clients"
 require_relative "smolagents/default_tools"
 require_relative "smolagents/mcp_client"
 require_relative "smolagents/cli"
+require_relative "smolagents/core"
 
 # Smolagents - A lightweight agent framework for building AI agents
 #
