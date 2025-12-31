@@ -31,13 +31,14 @@ module Smolagents
         @raw_data = value.instance_variable_get(:@raw_data)
         @path = value.path
       when String
-        if File.exist?(value)
-          @path = value
-        elsif value.encoding == Encoding::BINARY || value.bytes.any? { |b| b > 127 }
+        # Check for binary data first (contains null bytes or high bytes)
+        if value.include?("\x00") || value.encoding == Encoding::BINARY || value.bytes.any? { |b| b > 127 }
           # Looks like binary image data
           @raw_data = value
+        elsif File.exist?(value)
+          @path = value
         else
-          # Treat as path
+          # Treat as path (may not exist yet)
           @path = value
         end
       when IO, StringIO
