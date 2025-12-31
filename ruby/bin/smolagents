@@ -1,0 +1,79 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "optparse"
+
+options = {
+  model: "gpt-4",
+  provider: "openai",
+  tools: [],
+  max_steps: 10,
+  verbose: false
+}
+
+parser = OptionParser.new do |opts|
+  opts.banner = "Usage: smolagents [options] TASK"
+  opts.separator ""
+  opts.separator "Run an AI agent that writes and executes code to solve your task."
+  opts.separator ""
+  opts.separator "Options:"
+
+  opts.on("-m", "--model MODEL", "Model to use (default: gpt-4)") do |v|
+    options[:model] = v
+  end
+
+  opts.on("-p", "--provider PROVIDER", "API provider: openai, anthropic (default: openai)") do |v|
+    options[:provider] = v
+  end
+
+  opts.on("-t", "--tools TOOLS", "Comma-separated list of tools to enable") do |v|
+    options[:tools] = v.split(",").map(&:strip)
+  end
+
+  opts.on("-s", "--max-steps N", Integer, "Maximum steps (default: 10)") do |v|
+    options[:max_steps] = v
+  end
+
+  opts.on("-v", "--verbose", "Show detailed output") do
+    options[:verbose] = true
+  end
+
+  opts.on("-h", "--help", "Show this help") do
+    puts opts
+    exit
+  end
+
+  opts.separator ""
+  opts.separator "Environment variables:"
+  opts.separator "  OPENAI_API_KEY      API key for OpenAI"
+  opts.separator "  ANTHROPIC_API_KEY   API key for Anthropic"
+  opts.separator ""
+  opts.separator "Examples:"
+  opts.separator "  smolagents 'What is 2^10?'"
+  opts.separator "  smolagents -m claude-3-opus -p anthropic 'Summarize this webpage'"
+  opts.separator "  smolagents -t web_search,calculator 'Find the population of France'"
+end
+
+parser.parse!
+
+if ARGV.empty?
+  puts parser
+  exit 1
+end
+
+task = ARGV.join(" ")
+
+# Load the library
+require_relative "../lib/smolagents"
+
+# Run the agent
+agent = Smolagents::Agent.new(
+  model: options[:model],
+  provider: options[:provider],
+  tools: options[:tools],
+  max_steps: options[:max_steps],
+  verbose: options[:verbose]
+)
+
+result = agent.run(task)
+puts result
