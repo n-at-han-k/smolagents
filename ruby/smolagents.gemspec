@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "src/smolagents/version"
+require_relative "lib/smolagents/version"
 
 Gem::Specification.new do |spec|
   spec.name = "smolagents"
@@ -26,7 +26,7 @@ Gem::Specification.new do |spec|
   end
   spec.bindir = "exe"
   spec.executables = spec.files.grep(%r{\Aexe/}) { |f| File.basename(f) }
-  spec.require_paths = ["src"]
+  spec.require_paths = ["lib"]
 
   spec.add_dependency "chunky_png", "~> 1.4"
   spec.add_dependency "faraday", "~> 2.7"
