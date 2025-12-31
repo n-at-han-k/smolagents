@@ -1,157 +1,105 @@
 # Smolagents Ruby
 
-A Ruby port of the [smolagents](https://github.com/huggingface/smolagents) library for building AI agents.
+A minimal code-generating agent in ~150 lines of Ruby.
 
-## Installation
-
-Add this line to your application's Gemfile:
-
-```ruby
-gem 'smolagents'
-```
-
-And then execute:
-
-```bash
-$ bundle install
-```
-
-Or install it yourself as:
-
-```bash
-$ gem install smolagents
-```
+The agent writes Ruby code to solve your task, executes it, and repeats until done.
 
 ## Usage
 
-### Basic Example
+### CLI
+
+```bash
+# Set your API key
+export OPENAI_API_KEY=sk-...
+# or
+export ANTHROPIC_API_KEY=sk-ant-...
+
+# Run a task
+bin/smolagents "What is 2^10?"
+
+# Use a different model
+bin/smolagents -m gpt-4o "Calculate the factorial of 10"
+bin/smolagents -p anthropic -m claude-3-opus-20240229 "List prime numbers under 50"
+
+# Verbose mode
+bin/smolagents -v "Solve this step by step: what is 15% of 340?"
+```
+
+### Options
+
+```
+-m, --model MODEL      Model to use (default: gpt-4)
+-p, --provider PROVIDER  openai or anthropic (default: openai)
+-s, --max-steps N      Maximum steps (default: 10)
+-v, --verbose          Show detailed output
+```
+
+### Library
 
 ```ruby
-require 'smolagents'
+require "smolagents"
 
-# Create an agent memory with a system prompt
-memory = Smolagents::AgentMemory.new(
-  system_prompt: "You are a helpful AI assistant."
+# Create an agent
+agent = Smolagents::Agent.new(
+  model: "gpt-4",
+  provider: "openai"
 )
 
-# Add a task step
-memory.steps << Smolagents::TaskStep.new(task: "Help me write code")
+# Run a task
+result = agent.run("What is the sum of the first 100 prime numbers?")
+puts result
+```
 
-# Create timing for an action
-timing = Smolagents::Timing.start_now
+### Custom Tools
 
-# Add an action step
-memory.steps << Smolagents::ActionStep.new(
-  step_number: 1,
-  timing: timing,
-  model_output: "I'll help you write code!"
+```ruby
+require "smolagents"
+
+# Define a tool
+class Calculator < Smolagents::Core::Tool
+  def initialize
+    super(
+      name: "calculate",
+      description: "Evaluate a math expression",
+      inputs: { expression: { type: "string" } }
+    )
+  end
+
+  def call(expression:)
+    eval(expression).to_s
+  end
+end
+
+# Use it
+agent = Smolagents::Agent.new(
+  model: "gpt-4",
+  provider: "openai",
+  tools: [Calculator.new]
 )
 
-# Stop timing when done
-timing.stop!
-
-# Track token usage
-usage = Smolagents::TokenUsage.new(input_tokens: 100, output_tokens: 50)
-puts usage.total_tokens # => 150
+result = agent.run("Use the calculator to compute 123 * 456")
 ```
 
-### Agent Types
+## How It Works
 
-```ruby
-# Text output that behaves like a string
-text = Smolagents::AgentText.new("Hello, world!")
-puts text.upcase  # => "HELLO, WORLD!"
+1. Agent sends task to LLM with system prompt
+2. LLM responds with Ruby code in a ```ruby block
+3. Agent executes the code in a sandbox
+4. If code calls `final_answer(result)`, return the result
+5. Otherwise, send execution output back to LLM and repeat
 
-# Image output
-image = Smolagents::AgentImage.new("/path/to/image.png")
-image.save("output.png")
+That's it. ~150 lines total.
 
-# Audio output
-audio = Smolagents::AgentAudio.new("/path/to/audio.wav")
-puts audio.duration  # Duration in seconds
+## Files
+
 ```
-
-### Logging
-
-```ruby
-# Create a logger
-logger = Smolagents::AgentLogger.new(level: Smolagents::LogLevel::DEBUG)
-
-# Log at different levels
-logger.log("Info message", level: Smolagents::LogLevel::INFO)
-logger.log_error("Something went wrong!")
-logger.log_code(title: "Python", content: "print('hello')")
+lib/smolagents/core/
+  agent.rb      # The main loop
+  tool.rb       # Tool interface
+  model.rb      # OpenAI/Anthropic client
+  executor.rb   # Code execution sandbox
 ```
-
-### Callback Registry
-
-```ruby
-# Register callbacks for different step types
-registry = Smolagents::CallbackRegistry.new
-
-registry.register(Smolagents::ActionStep) do |step|
-  puts "Action step #{step.step_number} completed!"
-end
-
-registry.register(Smolagents::PlanningStep) do |step|
-  puts "Plan created: #{step.plan}"
-end
-
-# Callbacks are triggered automatically during agent execution
-```
-
-### Retry Logic
-
-```ruby
-# Create a retrier with exponential backoff
-retrier = Smolagents::Retrying.new(
-  max_attempts: 3,
-  wait_seconds: 1.0,
-  exponential_base: 2.0,
-  jitter: true,
-  retry_predicate: ->(e) { e.is_a?(Net::OpenTimeout) }
-)
-
-# Use it to wrap API calls
-result = retrier.call { make_api_request }
-```
-
-### Rate Limiting
-
-```ruby
-# Limit to 60 requests per minute
-limiter = Smolagents::RateLimiter.new(requests_per_minute: 60)
-
-100.times do
-  limiter.throttle  # Automatically waits if needed
-  make_api_call
-end
-```
-
-## Modules Converted
-
-| Python Module | Ruby Module | Description |
-|---------------|-------------|-------------|
-| `monitoring.py` | `monitoring.rb` | TokenUsage, Timing, Monitor, LogLevel, AgentLogger |
-| `utils.py` | `utils.rb`, `errors.rb` | Utility functions and error classes |
-| `agent_types.py` | `agent_types.rb` | AgentType, AgentText, AgentImage, AgentAudio |
-| `memory.py` | `memory.rb` | MemoryStep classes, AgentMemory, CallbackRegistry |
-| `models.py` | `models.rb` | ChatMessage, MessageRole, tool call classes |
-
-## Ruby Idioms Used
-
-This port uses idiomatic Ruby patterns:
-
-- **Keyword arguments** instead of positional arguments for clarity
-- **attr_reader/attr_accessor** for property access
-- **Modules** for namespacing and mixins
-- **Blocks** for callbacks instead of function references
-- **Method delegation** via `method_missing` for wrapper types
-- **Comparable** mixin for comparison operations
-- **to_h/to_s** conventions for serialization
-- **Frozen string literals** for performance
-- **RuboCop-compliant** code style
 
 ## License
 
-This project is licensed under the Apache License 2.0 - see the original [smolagents](https://github.com/huggingface/smolagents) repository for details.
+Apache License 2.0
