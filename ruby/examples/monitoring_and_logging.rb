@@ -90,7 +90,7 @@ logger = AgentLogger.new(level: LogLevel::INFO)
 # Mock model for demonstration
 mock_model = Object.new
 
-monitor = Monitor.new(tracked_model: mock_model, logger: logger)
+monitor = Smolagents::Monitor.new(tracked_model: mock_model, logger: logger)
 
 # Simulate tracking multiple steps
 3.times do |i|
