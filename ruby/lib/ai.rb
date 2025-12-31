@@ -11,6 +11,12 @@ require_relative "ai/clients/claude"
 require_relative "ai/clients/open_router"
 require_relative "ai/clients/grok"
 
+require_relative "ai/tools/code_interpreter"
+require_relative "ai/tools/final_answer"
+require_relative "ai/tools/user_input"
+require_relative "ai/tools/web_search"
+require_relative "ai/tools/visit_webpage"
+
 module AI
   class << self
     # Quick access to create a client
