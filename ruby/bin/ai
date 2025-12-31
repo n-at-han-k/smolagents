@@ -1,0 +1,54 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "optparse"
+require_relative "../lib/ai"
+
+options = {
+  provider: :openai,
+  model: nil,
+  verbose: false
+}
+
+parser = OptionParser.new do |opts|
+  opts.banner = "Usage: ai [options] MESSAGE"
+
+  opts.on("-p", "--provider NAME", "Provider: openai, claude, grok, openrouter") do |v|
+    options[:provider] = v.to_sym
+  end
+
+  opts.on("-m", "--model MODEL", "Model name") do |v|
+    options[:model] = v
+  end
+
+  opts.on("-v", "--verbose", "Show request/response details") do
+    options[:verbose] = true
+  end
+
+  opts.on("-h", "--help", "Show this help") do
+    puts opts
+    exit
+  end
+end
+
+parser.parse!
+
+if ARGV.empty?
+  puts parser
+  exit 1
+end
+
+message = ARGV.join(" ")
+
+# Create client
+client_opts = {}
+client_opts[:model] = options[:model] if options[:model]
+
+client = AI.client(options[:provider], **client_opts)
+
+puts "Provider: #{options[:provider]}" if options[:verbose]
+puts "Model: #{client.model}" if options[:verbose]
+puts "-" * 40 if options[:verbose]
+
+response = client.call(message)
+puts response
